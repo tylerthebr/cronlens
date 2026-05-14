@@ -1,0 +1,26 @@
+{
+  "name": "cronlens",
+  "version": "1.0.0",
+  "description": "A human-readable cron expression parser and validator with next-run preview in the terminal",
+  "main": "src/parser.js",
+  "bin": {
+    "cronlens": "./bin/cronlens"
+  },
+  "scripts": {
+    "test": "node --test src/*.test.js",
+    "test:watch": "node --test --watch src/*.test.js",
+    "start": "node bin/cronlens"
+  },
+  "keywords": [
+    "cron",
+    "cron-parser",
+    "cron-expression",
+    "scheduler",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
