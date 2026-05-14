@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+.pytest_cache/
+.tox/
+build/
+Thumbs.db
+htmlcov/
+.Python
+.DS_Store
+.env
+dist/
+*.egg
+.coverage
+*.egg-info/
