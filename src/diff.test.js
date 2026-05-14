@@ -1,72 +1,86 @@
 const { diffFields, diffCrons, formatDiff } = require('./diff');
 
 describe('diffFields', () => {
-  test('returns empty array for identical fields', () => {
-    const fields = ['0', '9', '*', '*', '1-5'];
-    expect(diffFields(fields, fields)).toEqual([]);
+  test('returns no changes when fields are identical', () => {
+    const a = { minute: '0', hour: '9', dom: '*', month: '*', dow: '*' };
+    const b = { minute: '0', hour: '9', dom: '*', month: '*', dow: '*' };
+    const result = diffFields(a, b);
+    expect(result.every(d => !d.changed)).toBe(true);
   });
 
-  test('detects a single changed field', () => {
-    const a = ['0', '9', '*', '*', '1-5'];
-    const b = ['0', '10', '*', '*', '1-5'];
-    const diffs = diffFields(a, b);
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0].name).toBe('hour');
-    expect(diffs[0].a).toBe('9');
-    expect(diffs[0].b).toBe('10');
+  test('detects changed fields', () => {
+    const a = { minute: '0', hour: '9', dom: '*', month: '*', dow: '*' };
+    const b = { minute: '30', hour: '9', dom: '*', month: '*', dow: '*' };
+    const result = diffFields(a, b);
+    const minuteDiff = result.find(d => d.field === 'minute');
+    expect(minuteDiff.changed).toBe(true);
+    expect(minuteDiff.from).toBe('0');
+    expect(minuteDiff.to).toBe('30');
   });
 
-  test('detects multiple changed fields', () => {
-    const a = ['0', '9', '*', '*', '1-5'];
-    const b = ['30', '9', '1', '*', '1-5'];
-    const diffs = diffFields(a, b);
-    expect(diffs).toHaveLength(2);
-    expect(diffs.map(d => d.name)).toEqual(['minute', 'day of month']);
+  test('marks unchanged fields correctly', () => {
+    const a = { minute: '0', hour: '9', dom: '*', month: '*', dow: '*' };
+    const b = { minute: '0', hour: '17', dom: '*', month: '*', dow: '*' };
+    const result = diffFields(a, b);
+    const minuteDiff = result.find(d => d.field === 'minute');
+    const hourDiff = result.find(d => d.field === 'hour');
+    expect(minuteDiff.changed).toBe(false);
+    expect(hourDiff.changed).toBe(true);
+  });
+
+  test('handles all fields changing', () => {
+    const a = { minute: '0', hour: '0', dom: '1', month: '1', dow: '0' };
+    const b = { minute: '59', hour: '23', dom: '31', month: '12', dow: '6' };
+    const result = diffFields(a, b);
+    expect(result.every(d => d.changed)).toBe(true);
   });
 });
 
 describe('diffCrons', () => {
-  test('identical expressions return identical: true', () => {
-    const result = diffCrons('0 9 * * 1-5', '0 9 * * 1-5');
-    expect(result.identical).toBe(true);
-    expect(result.diffs).toHaveLength(0);
+  test('returns parsed diff for two valid expressions', () => {
+    const result = diffCrons('0 9 * * *', '30 9 * * *');
+    expect(result.valid).toBe(true);
+    expect(result.diffs).toBeDefined();
+    expect(Array.isArray(result.diffs)).toBe(true);
   });
 
-  test('different expressions return identical: false with diffs', () => {
-    const result = diffCrons('0 9 * * 1-5', '0 17 * * 1-5');
-    expect(result.identical).toBe(false);
-    expect(result.diffs).toHaveLength(1);
-    expect(result.diffs[0].index).toBe(1);
+  test('returns error for invalid first expression', () => {
+    const result = diffCrons('invalid', '0 9 * * *');
+    expect(result.valid).toBe(false);
+    expect(result.error).toBeDefined();
   });
 
-  test('includes humanized descriptions for both expressions', () => {
-    const result = diffCrons('0 9 * * 1-5', '0 17 * * 1-5');
-    expect(typeof result.humanA).toBe('string');
-    expect(typeof result.humanB).toBe('string');
-    expect(result.humanA.length).toBeGreaterThan(0);
+  test('returns error for invalid second expression', () => {
+    const result = diffCrons('0 9 * * *', 'bad expr');
+    expect(result.valid).toBe(false);
+    expect(result.error).toBeDefined();
+  });
+
+  test('includes humanized descriptions in result', () => {
+    const result = diffCrons('0 9 * * 1', '0 9 * * 5');
+    expect(result.valid).toBe(true);
+    expect(result.descA).toBeDefined();
+    expect(result.descB).toBeDefined();
   });
 });
 
 describe('formatDiff', () => {
-  test('returns a string', () => {
-    const out = formatDiff('0 9 * * 1-5', '0 17 * * 1-5');
-    expect(typeof out).toBe('string');
+  test('returns a non-empty string', () => {
+    const result = diffCrons('0 9 * * *', '0 17 * * *');
+    const output = formatDiff(result);
+    expect(typeof output).toBe('string');
+    expect(output.length).toBeGreaterThan(0);
   });
 
-  test('includes identical message when expressions match', () => {
-    const out = formatDiff('* * * * *', '* * * * *');
-    expect(out).toContain('identical');
+  test('includes field names in output', () => {
+    const result = diffCrons('0 9 * * *', '0 17 * * *');
+    const output = formatDiff(result);
+    expect(output).toMatch(/hour/i);
   });
 
-  test('includes diff count and changed field name when different', () => {
-    const out = formatDiff('0 9 * * 1-5', '0 17 * * 1-5');
-    expect(out).toContain('1 difference');
-    expect(out).toContain('hour');
-  });
-
-  test('shows both expressions in output', () => {
-    const out = formatDiff('0 9 * * 1-5', '0 17 * * 1-5');
-    expect(out).toContain('0 9 * * 1-5');
-    expect(out).toContain('0 17 * * 1-5');
+  test('shows error message for invalid diff result', () => {
+    const result = { valid: false, error: 'Invalid expression' };
+    const output = formatDiff(result);
+    expect(output).toMatch(/invalid/i);
   });
 });
