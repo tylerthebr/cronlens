@@ -4,6 +4,7 @@ const BOLD = '\x1b[1m';
 const CYAN = '\x1b[36m';
 const RED = '\x1b[31m';
 const YELLOW = '\x1b[33m';
+const GREEN = '\x1b[32m';
 const RESET = '\x1b[0m';
 
 function printBanner() {
@@ -27,4 +28,12 @@ function printError(message) {
   console.error(`\n  ${RED}${BOLD}Error:${RESET} ${message}\n`);
 }
 
-module.exports = { printBanner, printHelp, printError, BOLD, CYAN, RED, YELLOW, RESET };
+/**
+ * Prints a success message to stdout in green.
+ * @param {string} message - The message to display.
+ */
+function printSuccess(message) {
+  console.log(`\n  ${GREEN}${BOLD}✓${RESET} ${message}\n`);
+}
+
+module.exports = { printBanner, printHelp, printError, printSuccess, BOLD, CYAN, RED, YELLOW, GREEN, RESET };
